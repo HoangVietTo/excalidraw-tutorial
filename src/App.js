@@ -436,6 +436,91 @@ const App = () => {
     updateElement(id, x1, y1, null, null, type, { text: event.target.value });
   };
 
+  const getTouchCoordinates = (event) => {
+    const touch = event.touches[0];
+    const clientX = touch.clientX - panOffset.x;
+    const clientY = touch.clientY - panOffset.y;
+    return { clientX, clientY };
+  };
+
+  const handleTouchStart = (event) => {
+    event.preventDefault();
+    if (action === "writing") return;
+
+    const { clientX, clientY } = getTouchCoordinates(event);
+
+    if (tool === "selection") {
+      const element = getElementAtPosition(clientX, clientY, elements);
+      if (element) {
+        // ... (same logic as handleMouseDown for selection tool)
+      }
+    } else {
+      const id = elements.length;
+      const element = createElement(id, clientX, clientY, clientX, clientY, tool);
+      setElements((prevState) => [...prevState, element]);
+      setSelectedElement(element);
+
+      setAction(tool === "text" ? "writing" : "drawing");
+    }
+  };
+
+  const handleTouchMove = (event) => {
+    event.preventDefault();
+    const { clientX, clientY } = getTouchCoordinates(event);
+
+    if (action === "panning") {
+      const deltaX = clientX - startPanMousePosition.x;
+      const deltaY = clientY - startPanMousePosition.y;
+      setPanOffset({
+        x: panOffset.x + deltaX,
+        y: panOffset.y + deltaY,
+      });
+      return;
+    }
+
+    if (tool === "selection") {
+      const element = getElementAtPosition(clientX, clientY, elements);
+      // ... (same logic as handleMouseMove for selection tool)
+    }
+
+    if (action === "drawing") {
+      const index = elements.length - 1;
+      const { x1, y1 } = elements[index];
+      updateElement(index, x1, y1, clientX, clientY, tool);
+    } else if (action === "moving") {
+      // ... (same logic as handleMouseMove for moving)
+    } else if (action === "resizing") {
+      // ... (same logic as handleMouseMove for resizing)
+    }
+  };
+
+  const handleTouchEnd = (event) => {
+    event.preventDefault();
+    const { clientX, clientY } = getTouchCoordinates(event);
+
+    if (selectedElement) {
+      if (
+        selectedElement.type === "text" &&
+        clientX - selectedElement.offsetX === selectedElement.x1 &&
+        clientY - selectedElement.offsetY === selectedElement.y1
+      ) {
+        setAction("writing");
+        return;
+      }
+
+      const index = selectedElement.id;
+      const { id, type } = elements[index];
+      if ((action === "drawing" || action === "resizing") && adjustmentRequired(type)) {
+        // ... (same logic as handleMouseUp for drawing and resizing)
+      }
+    }
+
+    if (action === "writing") return;
+
+    setAction("none");
+    setSelectedElement(null);
+  };
+
   return (
     <div>
       <div style={{ position: "fixed", zIndex: 2 }}>
@@ -497,6 +582,9 @@ const App = () => {
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
         style={{ position: "absolute", zIndex: 1 }}
       >
         Canvas
