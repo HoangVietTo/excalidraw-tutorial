@@ -491,14 +491,12 @@ const App = () => {
       // Two-finger touch for panning
       setAction("panning");
       setStartPanMousePosition({ x: clientX, y: clientY });
-      return;
-    }
-    if (event.touches.length === 2) {
       // Two-finger touch for pinch-to-zoom
       setAction("pinchZooming");
       setStartPinchDistance(getPinchDistance(event));
       return;
     }
+
 
     if (tool === "selection") {
       const element = getElementAtPosition(clientX, clientY, elements);
