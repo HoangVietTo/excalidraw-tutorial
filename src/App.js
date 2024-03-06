@@ -437,10 +437,23 @@ const App = () => {
   };
 
   const getTouchCoordinates = (event) => {
-    const touch = event.touches[0];
-    const clientX = touch.clientX - panOffset.x;
-    const clientY = touch.clientY - panOffset.y;
-    return { clientX, clientY };
+    const touches = event.touches;
+    const touchCount = touches.length;
+
+    if (touchCount === 1) {
+      const touch = touches[0];
+      const clientX = touch.clientX - panOffset.x;
+      const clientY = touch.clientY - panOffset.y;
+      return { clientX, clientY };
+    } else if (touchCount === 2) {
+      const touch1 = touches[0];
+      const touch2 = touches[1];
+      const centerX = (touch1.clientX + touch2.clientX) / 2;
+      const centerY = (touch1.clientY + touch2.clientY) / 2;
+      return { clientX: centerX - panOffset.x, clientY: centerY - panOffset.y };
+    }
+
+    return { clientX: 0, clientY: 0 }; // Default value
   };
 
   const handleTouchStart = (event) => {
@@ -448,6 +461,12 @@ const App = () => {
     if (action === "writing") return;
 
     const { clientX, clientY } = getTouchCoordinates(event);
+    if (event.touches.length === 2) {
+      // Two-finger touch for panning
+      setAction("panning");
+      setStartPanMousePosition({ x: clientX, y: clientY });
+      return;
+    }
 
     if (tool === "selection") {
       const element = getElementAtPosition(clientX, clientY, elements);
@@ -497,6 +516,13 @@ const App = () => {
   const handleTouchEnd = (event) => {
     event.preventDefault();
     const { clientX, clientY } = getTouchCoordinates(event);
+
+    if (action === "writing") return;
+
+    if (event.touches.length === 0 && action === "panning") {
+      setAction("none");
+      return;
+    }
 
     if (selectedElement) {
       if (
