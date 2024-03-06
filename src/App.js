@@ -492,8 +492,8 @@ const App = () => {
       setAction("panning");
       setStartPanMousePosition({ x: clientX, y: clientY });
       // Two-finger touch for pinch-to-zoom
-      // setAction("pinchZooming");
-      // setStartPinchDistance(getPinchDistance(event));
+      setAction("pinchZooming");
+      setStartPinchDistance(getPinchDistance(event));
       return;
     }
 
@@ -534,7 +534,7 @@ const App = () => {
       if (Math.abs(deltaPinch) > 10) {
         // Adjust the zoom scale
         const zoomFactor = deltaPinch / 1000; // You may need to adjust this factor based on your needs
-        const newScale = Math.min(Math.max(scale + zoomFactor, 0.1), 20);
+        const newScale = Math.min(Math.max(scale + zoomFactor, 0.5), 20);
         setScale(newScale);
       }
 
@@ -550,139 +550,139 @@ const App = () => {
       const index = elements.length - 1;
       const { x1, y1 } = elements[index];
       updateElement(index, x1, y1, clientX, clientY, tool);
-    } else if (action === "moving") {
-      // ... (same logic as handleMouseMove for moving)
-    } else if (action === "resizing") {
-      // ... (same logic as handleMouseMove for resizing)
-    }
-  };
+      // } else if (action === "moving") {
+      //   // ... (same logic as handleMouseMove for moving)
+      // } else if (action === "resizing") {
+      //   // ... (same logic as handleMouseMove for resizing)
+      // }
+    };
 
-  const handleTouchEnd = (event) => {
-    event.preventDefault();
-    const { clientX, clientY } = getTouchCoordinates(event);
+    const handleTouchEnd = (event) => {
+      event.preventDefault();
+      const { clientX, clientY } = getTouchCoordinates(event);
 
-    if (action === "writing") return;
+      if (action === "writing") return;
 
-    if (event.touches.length === 0 && action === "panning") {
-      setAction("none");
-      return;
-    }
-
-    if (selectedElement) {
-      if (
-        selectedElement.type === "text" &&
-        clientX - selectedElement.offsetX === selectedElement.x1 &&
-        clientY - selectedElement.offsetY === selectedElement.y1
-      ) {
-        setAction("writing");
+      if (event.touches.length === 0 && action === "panning") {
+        setAction("none");
         return;
       }
 
-      const index = selectedElement.id;
-      const { id, type } = elements[index];
-      if ((action === "drawing" || action === "resizing") && adjustmentRequired(type)) {
-        // ... (same logic as handleMouseUp for drawing and resizing)
+      if (selectedElement) {
+        if (
+          selectedElement.type === "text" &&
+          clientX - selectedElement.offsetX === selectedElement.x1 &&
+          clientY - selectedElement.offsetY === selectedElement.y1
+        ) {
+          setAction("writing");
+          return;
+        }
+
+        const index = selectedElement.id;
+        const { id, type } = elements[index];
+        if ((action === "drawing" || action === "resizing") && adjustmentRequired(type)) {
+          // ... (same logic as handleMouseUp for drawing and resizing)
+        }
       }
+
+      if (action === "writing") return;
+
+      setAction("none");
+      setSelectedElement(null);
+    };
+
+    useEffect(() => {
+      const handleTouchMove = (event) => {
+        if (event.touches.length >= 1) {
+          event.preventDefault();
+        }
+      };
+
+      document.addEventListener("touchmove", handleTouchMove, { passive: false });
+
+      return () => {
+        document.removeEventListener("touchmove", handleTouchMove);
+      };
+    }, []);
+
+    const onZoom = (delta) => {
+      setScale(prevState => Math.min(Math.max(prevState + delta, 0.1), 20));
     }
-
-    if (action === "writing") return;
-
-    setAction("none");
-    setSelectedElement(null);
+    return (
+      <div>
+        <div style={{ position: "fixed", zIndex: 2 }}>
+          <input
+            type="radio"
+            id="selection"
+            checked={tool === "selection"}
+            onChange={() => setTool("selection")}
+          />
+          <label htmlFor="selection">Selection</label>
+          <input type="radio" id="line" checked={tool === "line"} onChange={() => setTool("line")} />
+          <label htmlFor="line">Line</label>
+          <input
+            type="radio"
+            id="rectangle"
+            checked={tool === "rectangle"}
+            onChange={() => setTool("rectangle")}
+          />
+          <label htmlFor="rectangle">Rectangle</label>
+          <input
+            type="radio"
+            id="pencil"
+            checked={tool === "pencil"}
+            onChange={() => setTool("pencil")}
+          />
+          <label htmlFor="pencil">Pencil</label>
+          <input type="radio" id="text" checked={tool === "text"} onChange={() => setTool("text")} />
+          <label htmlFor="text">Text</label>
+        </div>
+        <div style={{ position: "fixed", zIndex: 2, bottom: 0, padding: 10 }}>
+          <button onClick={() => onZoom(-0.1)}>-</button>
+          <span onClick={() => setScale(1)}>
+            {new Intl.NumberFormat("en-GB", { style: "percent" }).format(scale)}
+          </span>
+          <button onClick={() => onZoom(0.1)}>+</button>
+          <button onClick={undo}>Undo</button>
+          <button onClick={redo}>Redo</button>
+        </div>
+        {action === "writing" ? (
+          <textarea
+            ref={textAreaRef}
+            onBlur={handleBlur}
+            style={{
+              position: "fixed",
+              top: (selectedElement.y1 - 2) * scale + panOffset.y * scale - scaleOffset.y,
+              left: selectedElement.x1 * scale + panOffset.x * scale - scaleOffset.x,
+              font: `${24 * scale} px sans-serif`,
+              margin: 0,
+              padding: 0,
+              border: 0,
+              outline: 0,
+              resize: "auto",
+              overflow: "hidden",
+              whiteSpace: "pre",
+              background: "transparent",
+              zIndex: 2,
+            }}
+          />
+        ) : null}
+        <canvas
+          id="canvas"
+          width={window.innerWidth}
+          height={window.innerHeight}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          style={{ position: "absolute", zIndex: 1 }}
+        >
+          Canvas
+        </canvas>
+      </div>
+    );
   };
 
-  useEffect(() => {
-    const handleTouchMove = (event) => {
-      if (event.touches.length >= 1) {
-        event.preventDefault();
-      }
-    };
-
-    document.addEventListener("touchmove", handleTouchMove, { passive: false });
-
-    return () => {
-      document.removeEventListener("touchmove", handleTouchMove);
-    };
-  }, []);
-
-  const onZoom = (delta) => {
-    setScale(prevState => Math.min(Math.max(prevState + delta, 0.1), 20));
-  }
-  return (
-    <div>
-      <div style={{ position: "fixed", zIndex: 2 }}>
-        <input
-          type="radio"
-          id="selection"
-          checked={tool === "selection"}
-          onChange={() => setTool("selection")}
-        />
-        <label htmlFor="selection">Selection</label>
-        <input type="radio" id="line" checked={tool === "line"} onChange={() => setTool("line")} />
-        <label htmlFor="line">Line</label>
-        <input
-          type="radio"
-          id="rectangle"
-          checked={tool === "rectangle"}
-          onChange={() => setTool("rectangle")}
-        />
-        <label htmlFor="rectangle">Rectangle</label>
-        <input
-          type="radio"
-          id="pencil"
-          checked={tool === "pencil"}
-          onChange={() => setTool("pencil")}
-        />
-        <label htmlFor="pencil">Pencil</label>
-        <input type="radio" id="text" checked={tool === "text"} onChange={() => setTool("text")} />
-        <label htmlFor="text">Text</label>
-      </div>
-      <div style={{ position: "fixed", zIndex: 2, bottom: 0, padding: 10 }}>
-        <button onClick={() => onZoom(-0.1)}>-</button>
-        <span onClick={() => setScale(1)}>
-          {new Intl.NumberFormat("en-GB", { style: "percent" }).format(scale)}
-        </span>
-        <button onClick={() => onZoom(0.1)}>+</button>
-        <button onClick={undo}>Undo</button>
-        <button onClick={redo}>Redo</button>
-      </div>
-      {action === "writing" ? (
-        <textarea
-          ref={textAreaRef}
-          onBlur={handleBlur}
-          style={{
-            position: "fixed",
-            top: (selectedElement.y1 - 2) * scale + panOffset.y * scale - scaleOffset.y,
-            left: selectedElement.x1 * scale + panOffset.x * scale - scaleOffset.x,
-            font: `${24 * scale} px sans-serif`,
-            margin: 0,
-            padding: 0,
-            border: 0,
-            outline: 0,
-            resize: "auto",
-            overflow: "hidden",
-            whiteSpace: "pre",
-            background: "transparent",
-            zIndex: 2,
-          }}
-        />
-      ) : null}
-      <canvas
-        id="canvas"
-        width={window.innerWidth}
-        height={window.innerHeight}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        style={{ position: "absolute", zIndex: 1 }}
-      >
-        Canvas
-      </canvas>
-    </div>
-  );
-};
-
-export default App;
+  export default App;
