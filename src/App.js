@@ -216,6 +216,8 @@ const App = () => {
   const [selectedElement, setSelectedElement] = useState(null);
   const [panOffset, setPanOffset] = React.useState({ x: 0, y: 0 });
   const [startPanMousePosition, setStartPanMousePosition] = React.useState({ x: 0, y: 0 });
+  const [scale, setScale] = useState(1);
+  const [scaleOffset, setScaleOffset] = useState({ x: 0, y: 0 });
   const textAreaRef = useRef();
   const pressedKeys = usePressedKeys();
 
@@ -226,15 +228,24 @@ const App = () => {
 
     context.clearRect(0, 0, canvas.width, canvas.height);
 
-    context.save();
-    context.translate(panOffset.x, panOffset.y);
 
+    const scaledWidth = canvas.width * scale;
+    const scaledHeight = canvas.height * scale;
+
+    const scaleOffsetX = (scaledWidth - canvas.width) / 2;
+    const scaleOffsetY = (scaledHeight - canvas.height) / 2;
+    setScaleOffset({ x: scaleOffsetX, y: scaleOffsetY });
+
+    context.save();
+    context.translate(panOffset.x * scale - scaleOffsetX, panOffset.y * scale - scaleOffsetY);
+
+    context.scale(scale, scale)
     elements.forEach(element => {
       if (action === "writing" && selectedElement.id === element.id) return;
       drawElement(roughCanvas, context, element);
     });
     context.restore();
-  }, [elements, action, selectedElement, panOffset]);
+  }, [elements, action, selectedElement, panOffset, scale]);
 
   useEffect(() => {
     const undoRedoFunction = event => {
@@ -254,18 +265,20 @@ const App = () => {
   }, [undo, redo]);
 
   useEffect(() => {
-    const panFunction = event => {
-      setPanOffset(prevState => ({
-        x: prevState.x - event.deltaX,
-        y: prevState.y - event.deltaY,
-      }));
+    const panOrZoomFunction = event => {
+      if (pressedKeys.has("Meta") || pressedKeys.has("Control")) onZoom(event.deltaY * -0.01);
+      else
+        setPanOffset(prevState => ({
+          x: prevState.x - event.deltaX,
+          y: prevState.y - event.deltaY,
+        }));
     };
 
-    document.addEventListener("wheel", panFunction);
+    document.addEventListener("wheel", panOrZoomFunction);
     return () => {
-      document.removeEventListener("wheel", panFunction);
+      document.removeEventListener("wheel", panOrZoomFunction);
     };
-  }, []);
+  }, [pressedKeys]);
 
   useEffect(() => {
     const textArea = textAreaRef.current;
@@ -307,9 +320,9 @@ const App = () => {
   };
 
   const getMouseCoordinates = event => {
-    const clientX = event.clientX - panOffset.x;
-    const clientY = event.clientY - panOffset.y;
-    return { clientX, clientY };
+    const clientX = (event.clientX - panOffset.x * scale + scaleOffset.x) / scale;
+    const clientY = (event.clientY - panOffset.y * scale + scaleOffset.y) / scale;
+    return { clientX, clientY }
   };
 
   const handleMouseDown = event => {
@@ -561,6 +574,9 @@ const App = () => {
     };
   }, []);
 
+  const onZoom = (delta) => {
+    setScale(prevState => Math.min(Math.max(prevState + delta, 0.1), 20));
+  }
   return (
     <div>
       <div style={{ position: "fixed", zIndex: 2 }}>
@@ -591,6 +607,11 @@ const App = () => {
         <label htmlFor="text">Text</label>
       </div>
       <div style={{ position: "fixed", zIndex: 2, bottom: 0, padding: 10 }}>
+        <button onClick={() => onZoom(-0.1)}>-</button>
+        <span onClick={() => setScale(1)}>
+          {new Intl.NumberFormat("en-GB", { style: "percent" }).format(scale)}
+        </span>
+        <button onClick={() => onZoom(0.1)}>+</button>
         <button onClick={undo}>Undo</button>
         <button onClick={redo}>Redo</button>
       </div>
@@ -600,9 +621,9 @@ const App = () => {
           onBlur={handleBlur}
           style={{
             position: "fixed",
-            top: selectedElement.y1 - 2 + panOffset.y,
-            left: selectedElement.x1 + panOffset.x,
-            font: "24px sans-serif",
+            top: (selectedElement.y1 - 2) * scale + panOffset.y * scale - scaleOffset.y,
+            left: selectedElement.x1 * scale + panOffset.x * scale - scaleOffset.x,
+            font: `${24 * scale} px sans-serif`,
             margin: 0,
             padding: 0,
             border: 0,
