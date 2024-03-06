@@ -218,9 +218,22 @@ const App = () => {
   const [startPanMousePosition, setStartPanMousePosition] = React.useState({ x: 0, y: 0 });
   const [scale, setScale] = useState(1);
   const [scaleOffset, setScaleOffset] = useState({ x: 0, y: 0 });
+  const [startPinchDistance, setStartPinchDistance] = useState(0);
+
   const textAreaRef = useRef();
   const pressedKeys = usePressedKeys();
+  const getPinchDistance = (event) => {
+    const touch1 = event.touches[0];
+    const touch2 = event.touches[1];
 
+    if (touch1 && touch2) {
+      const dx = touch1.clientX - touch2.clientX;
+      const dy = touch1.clientY - touch2.clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    return 0;
+  };
   useLayoutEffect(() => {
     const canvas = document.getElementById("canvas");
     const context = canvas.getContext("2d");
@@ -480,6 +493,12 @@ const App = () => {
       setStartPanMousePosition({ x: clientX, y: clientY });
       return;
     }
+    if (event.touches.length === 2) {
+      // Two-finger touch for pinch-to-zoom
+      setAction("pinchZooming");
+      setStartPinchDistance(getPinchDistance(event));
+      return;
+    }
 
     if (tool === "selection") {
       const element = getElementAtPosition(clientX, clientY, elements);
@@ -510,6 +529,20 @@ const App = () => {
       return;
     }
 
+    if (action === "pinchZooming") {
+      const currentPinchDistance = getPinchDistance(event);
+      const deltaPinch = currentPinchDistance - startPinchDistance;
+
+      if (Math.abs(deltaPinch) > 10) {
+        // Adjust the zoom scale
+        const zoomFactor = deltaPinch / 1000; // You may need to adjust this factor based on your needs
+        const newScale = Math.min(Math.max(scale + zoomFactor, 0.1), 20);
+        setScale(newScale);
+      }
+
+      setStartPinchDistance(currentPinchDistance);
+      return;
+    }
     if (tool === "selection") {
       const element = getElementAtPosition(clientX, clientY, elements);
       // ... (same logic as handleMouseMove for selection tool)
