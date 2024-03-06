@@ -562,7 +562,7 @@ const App = () => {
 
   useEffect(() => {
     const handleTouchMove = (event) => {
-      if (event.touches.length > 1) {
+      if (event.touches.length >= 1) {
         event.preventDefault();
       }
     };
