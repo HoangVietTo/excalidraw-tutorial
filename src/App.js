@@ -487,12 +487,11 @@ const App = () => {
     if (action === "writing") return;
 
     const { clientX, clientY } = getTouchCoordinates(event);
+
     if (event.touches.length === 2) {
-      // Two-finger touch for panning
-      setAction("panning");
+      // Two-finger touch for panning and pinch-to-zoom
+      setAction("panningZooming");
       setStartPanMousePosition({ x: clientX, y: clientY });
-      // Two-finger touch for pinch-to-zoom
-      setAction("pinchZooming");
       setStartPinchDistance(getPinchDistance(event));
       return;
     }
@@ -517,17 +516,16 @@ const App = () => {
     event.preventDefault();
     const { clientX, clientY } = getTouchCoordinates(event);
 
-    if (action === "panning") {
+    const { clientX, clientY } = getTouchCoordinates(event);
+
+    if (action === "panningZooming") {
       const deltaX = clientX - startPanMousePosition.x;
       const deltaY = clientY - startPanMousePosition.y;
       setPanOffset({
         x: panOffset.x + deltaX,
         y: panOffset.y + deltaY,
       });
-      return;
-    }
 
-    if (action === "pinchZooming") {
       const currentPinchDistance = getPinchDistance(event);
       const deltaPinch = currentPinchDistance - startPinchDistance;
 
@@ -563,11 +561,10 @@ const App = () => {
 
       if (action === "writing") return;
 
-      if (event.touches.length === 0 && action === "panning") {
+      if (event.touches.length === 0 && action === "panningZooming") {
         setAction("none");
         return;
       }
-
       if (selectedElement) {
         if (
           selectedElement.type === "text" &&
