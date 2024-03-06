@@ -492,8 +492,8 @@ const App = () => {
       setAction("panning");
       setStartPanMousePosition({ x: clientX, y: clientY });
       // Two-finger touch for pinch-to-zoom
-      setAction("pinchZooming");
-      setStartPinchDistance(getPinchDistance(event));
+      // setAction("pinchZooming");
+      // setStartPinchDistance(getPinchDistance(event));
       return;
     }
 
