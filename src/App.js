@@ -307,19 +307,19 @@ const App = () => {
   const updateElement = (id, x1, y1, x2, y2, type, options) => {
     const elementsCopy = [...elements];
 
+    const adjustedX1 = (x1 - panOffset.x) / scale;
+    const adjustedY1 = (y1 - panOffset.y) / scale;
+    const adjustedX2 = (x2 - panOffset.x) / scale;
+    const adjustedY2 = (y2 - panOffset.y) / scale;
     switch (type) {
       case "line":
       case "rectangle":
-        const adjustedX1 = x1 / scale;
-        const adjustedY1 = y1 / scale;
-        const adjustedX2 = x2 / scale;
-        const adjustedY2 = y2 / scale;
         elementsCopy[id] = createElement(id, adjustedX1, adjustedY1, adjustedX2, adjustedY2, type);
         break;
       case "pencil":
-        // Adjust the new point coordinates based on the current scale
-        const adjustedX2Pencil = x2 / scale;
-        const adjustedY2Pencil = y2 / scale;
+        // Adjust the new point coordinates based on the current scale and panOffset
+        const adjustedX2Pencil = (x2 - panOffset.x) / scale;
+        const adjustedY2Pencil = (y2 - panOffset.y) / scale;
         elementsCopy[id].points = [...elementsCopy[id].points, { x: adjustedX2Pencil, y: adjustedY2Pencil }];
         break;
       case "text":
@@ -329,8 +329,8 @@ const App = () => {
           .getContext("2d")
           .measureText(options.text).width;
         const textHeight = 24;
-        const adjustedX1Text = x1 / scale;
-        const adjustedY1Text = y1 / scale;
+        const adjustedX1Text = (x1 - panOffset.x) / scale;
+        const adjustedY1Text = (y1 - panOffset.y) / scale;
         elementsCopy[id] = {
           ...createElement(id, adjustedX1Text, adjustedY1Text, adjustedX1Text + textWidth, adjustedY1Text + textHeight, type),
           text: options.text,
