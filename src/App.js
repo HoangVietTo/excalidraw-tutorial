@@ -543,7 +543,7 @@ const App = () => {
 
 
     if (tool === "selection") {
-      const element = getElementAtPosition(clientX, clientY, elements);
+      const element = getElementAtPosition(scaledClientX, scaledClientY, elements);
       // ... (same logic as handleMouseMove for selection tool)
     }
 
@@ -553,10 +553,10 @@ const App = () => {
       const width = scaledClientX - x1;
       const height = scaledClientY - y1;
       updateElement(index, x1, y1, x1 + width, y1 + height, tool);
-      // } else if (action === "moving") {
-      //   // ... (same logic as handleMouseMove for moving)
-      // } else if (action === "resizing") {
-      //   // ... (same logic as handleMouseMove for resizing)
+    } else if (action === "moving") {
+      // ... (same logic as handleMouseMove for moving)
+    } else if (action === "resizing") {
+      // ... (same logic as handleMouseMove for resizing)
       // }
     };
   };
