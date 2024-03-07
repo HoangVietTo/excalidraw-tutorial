@@ -310,19 +310,29 @@ const App = () => {
     switch (type) {
       case "line":
       case "rectangle":
-        elementsCopy[id] = createElement(id, x1, y1, x2, y2, type);
+        const adjustedX1 = x1 / scale;
+        const adjustedY1 = y1 / scale;
+        const adjustedX2 = x2 / scale;
+        const adjustedY2 = y2 / scale;
+        elementsCopy[id] = createElement(id, adjustedX1, adjustedY1, adjustedX2, adjustedY2, type);
         break;
       case "pencil":
-        elementsCopy[id].points = [...elementsCopy[id].points, { x: x2, y: y2 }];
+        // Adjust the new point coordinates based on the current scale
+        const adjustedX2Pencil = x2 / scale;
+        const adjustedY2Pencil = y2 / scale;
+        elementsCopy[id].points = [...elementsCopy[id].points, { x: adjustedX2Pencil, y: adjustedY2Pencil }];
         break;
       case "text":
+        // Measure text and set adjusted coordinates
         const textWidth = document
           .getElementById("canvas")
           .getContext("2d")
           .measureText(options.text).width;
         const textHeight = 24;
+        const adjustedX1Text = x1 / scale;
+        const adjustedY1Text = y1 / scale;
         elementsCopy[id] = {
-          ...createElement(id, x1, y1, x1 + textWidth, y1 + textHeight, type),
+          ...createElement(id, adjustedX1Text, adjustedY1Text, adjustedX1Text + textWidth, adjustedY1Text + textHeight, type),
           text: options.text,
         };
         break;
@@ -439,10 +449,10 @@ const App = () => {
     setAction("none");
     setSelectedElement(null);
   };
-  const getPointerCoordinates = event => {
-    const clientX = (event.clientX - panOffset.x * scale + scaleOffset.x) / scale;
-    const clientY = (event.clientY - panOffset.y * scale + scaleOffset.y) / scale;
-    return { clientX, clientY }
+  const getPointerCoordinates = (event) => {
+    const clientX = (event.clientX - panOffset.x + scaleOffset.x) / scale;
+    const clientY = (event.clientY - panOffset.y + scaleOffset.y) / scale;
+    return { clientX, clientY };
   };
 
   // const handleMouseDown = event => {
@@ -748,11 +758,11 @@ const App = () => {
         <label htmlFor="text">Text</label>
       </div>
       <div style={{ position: "fixed", zIndex: 2, bottom: 0, padding: 10 }}>
-        <button onClick={() => onZoom(-0.1)}>-</button>
+        <button onClick={() => onZoom(-0.3)}>-</button>
         <span onClick={() => setScale(1)}>
           {new Intl.NumberFormat("en-GB", { style: "percent" }).format(scale)}
         </span>
-        <button onClick={() => onZoom(0.1)}>+</button>
+        <button onClick={() => onZoom(0.3)}>+</button>
         <button onClick={undo}>Undo</button>
         <button onClick={redo}>Redo</button>
       </div>
