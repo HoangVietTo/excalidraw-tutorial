@@ -514,50 +514,52 @@ const App = () => {
 
   const handleTouchMove = (event) => {
     event.preventDefault();
-    const { clientX, clientY } = getTouchCoordinates(event);
+
+    if (event.touches.length >= 1) {
+      const { clientX, clientY } = getTouchCoordinates(event);
+
+      if (action === "panningZooming") {
+        const deltaX = clientX - startPanMousePosition.x;
+        const deltaY = clientY - startPanMousePosition.y;
+        setPanOffset({
+          x: panOffset.x + deltaX,
+          y: panOffset.y + deltaY,
+        });
+
+        const currentPinchDistance = getPinchDistance(event);
+        const deltaPinch = currentPinchDistance - startPinchDistance;
+
+        if (Math.abs(deltaPinch) > 10) {
+          // Adjust the zoom scale
+          const zoomFactor = deltaPinch / 1000; // You may need to adjust this factor based on your needs
+          const newScale = Math.min(Math.max(scale + zoomFactor, 0.5), 20);
+          setScale(newScale);
+        }
+
+        setStartPinchDistance(currentPinchDistance);
+        return;
+      }
+      const scaledClientX = (clientX - panOffset.x) / scale;
+      const scaledClientY = (clientY - panOffset.y) / scale;
 
 
-    if (action === "panningZooming") {
-      const deltaX = clientX - startPanMousePosition.x;
-      const deltaY = clientY - startPanMousePosition.y;
-      setPanOffset({
-        x: panOffset.x + deltaX,
-        y: panOffset.y + deltaY,
-      });
-
-      const currentPinchDistance = getPinchDistance(event);
-      const deltaPinch = currentPinchDistance - startPinchDistance;
-
-      if (Math.abs(deltaPinch) > 10) {
-        // Adjust the zoom scale
-        const zoomFactor = deltaPinch / 1000; // You may need to adjust this factor based on your needs
-        const newScale = Math.min(Math.max(scale + zoomFactor, 0.5), 20);
-        setScale(newScale);
+      if (tool === "selection") {
+        const element = getElementAtPosition(scaledClientX, scaledClientY, elements);
+        // ... (same logic as handleMouseMove for selection tool)
       }
 
-      setStartPinchDistance(currentPinchDistance);
-      return;
-    }
-    const scaledClientX = (clientX - panOffset.x) / scale;
-    const scaledClientY = (clientY - panOffset.y) / scale;
-
-
-    if (tool === "selection") {
-      const element = getElementAtPosition(scaledClientX, scaledClientY, elements);
-      // ... (same logic as handleMouseMove for selection tool)
-    }
-
-    if (action === "drawing") {
-      const index = elements.length - 1;
-      const { x1, y1 } = elements[index];
-      const width = scaledClientX - x1;
-      const height = scaledClientY - y1;
-      updateElement(index, x1, y1, x1 + width, y1 + height, tool);
-    } else if (action === "moving") {
-      // ... (same logic as handleMouseMove for moving)
-    } else if (action === "resizing") {
-      // ... (same logic as handleMouseMove for resizing)
-      // }
+      if (action === "drawing") {
+        const index = elements.length - 1;
+        const { x1, y1 } = elements[index];
+        const width = scaledClientX - x1;
+        const height = scaledClientY - y1;
+        updateElement(index, x1, y1, x1 + width, y1 + height, tool);
+      } else if (action === "moving") {
+        // ... (same logic as handleMouseMove for moving)
+      } else if (action === "resizing") {
+        // ... (same logic as handleMouseMove for resizing)
+        // }
+      };
     };
   };
 
