@@ -216,24 +216,9 @@ const App = () => {
   const [selectedElement, setSelectedElement] = useState(null);
   const [panOffset, setPanOffset] = React.useState({ x: 0, y: 0 });
   const [startPanMousePosition, setStartPanMousePosition] = React.useState({ x: 0, y: 0 });
-  const [scale, setScale] = useState(1);
-  const [scaleOffset, setScaleOffset] = useState({ x: 0, y: 0 });
-  const [startPinchDistance, setStartPinchDistance] = useState(0);
-
   const textAreaRef = useRef();
   const pressedKeys = usePressedKeys();
-  const getPinchDistance = (event) => {
-    const touch1 = event.touches[0];
-    const touch2 = event.touches[1];
 
-    if (touch1 && touch2) {
-      const dx = touch1.clientX - touch2.clientX;
-      const dy = touch1.clientY - touch2.clientY;
-      return Math.sqrt(dx * dx + dy * dy);
-    }
-
-    return 0;
-  };
   useLayoutEffect(() => {
     const canvas = document.getElementById("canvas");
     const context = canvas.getContext("2d");
@@ -241,24 +226,15 @@ const App = () => {
 
     context.clearRect(0, 0, canvas.width, canvas.height);
 
-
-    const scaledWidth = canvas.width * scale;
-    const scaledHeight = canvas.height * scale;
-
-    const scaleOffsetX = (scaledWidth - canvas.width) / 2;
-    const scaleOffsetY = (scaledHeight - canvas.height) / 2;
-    setScaleOffset({ x: scaleOffsetX, y: scaleOffsetY });
-
     context.save();
-    context.translate(panOffset.x * scale - scaleOffsetX, panOffset.y * scale - scaleOffsetY);
+    context.translate(panOffset.x, panOffset.y);
 
-    context.scale(scale, scale)
     elements.forEach(element => {
       if (action === "writing" && selectedElement.id === element.id) return;
       drawElement(roughCanvas, context, element);
     });
     context.restore();
-  }, [elements, action, selectedElement, panOffset, scale]);
+  }, [elements, action, selectedElement, panOffset]);
 
   useEffect(() => {
     const undoRedoFunction = event => {
@@ -278,20 +254,18 @@ const App = () => {
   }, [undo, redo]);
 
   useEffect(() => {
-    const panOrZoomFunction = event => {
-      if (pressedKeys.has("Meta") || pressedKeys.has("Control")) onZoom(event.deltaY * -0.01);
-      else
-        setPanOffset(prevState => ({
-          x: prevState.x - event.deltaX,
-          y: prevState.y - event.deltaY,
-        }));
+    const panFunction = event => {
+      setPanOffset(prevState => ({
+        x: prevState.x - event.deltaX,
+        y: prevState.y - event.deltaY,
+      }));
     };
 
-    document.addEventListener("wheel", panOrZoomFunction);
+    document.addEventListener("wheel", panFunction);
     return () => {
-      document.removeEventListener("wheel", panOrZoomFunction);
+      document.removeEventListener("wheel", panFunction);
     };
-  }, [pressedKeys]);
+  }, []);
 
   useEffect(() => {
     const textArea = textAreaRef.current;
@@ -333,9 +307,9 @@ const App = () => {
   };
 
   const getMouseCoordinates = event => {
-    const clientX = (event.clientX - panOffset.x * scale + scaleOffset.x) / scale;
-    const clientY = (event.clientY - panOffset.y * scale + scaleOffset.y) / scale;
-    return { clientX, clientY }
+    const clientX = event.clientX - panOffset.x;
+    const clientY = event.clientY - panOffset.y;
+    return { clientX, clientY };
   };
 
   const handleMouseDown = event => {
@@ -463,23 +437,10 @@ const App = () => {
   };
 
   const getTouchCoordinates = (event) => {
-    const touches = event.touches;
-    const touchCount = touches.length;
-
-    if (touchCount === 1) {
-      const touch = touches[0];
-      const clientX = (touch.clientX - panOffset.x) / scale + scaleOffset.x;
-      const clientY = (touch.clientY - panOffset.y) / scale + scaleOffset.y;
-      return { clientX, clientY };
-    } else if (touchCount === 2) {
-      const touch1 = touches[0];
-      const touch2 = touches[1];
-      const centerX = (touch1.clientX + touch2.clientX) / 2;
-      const centerY = (touch1.clientY + touch2.clientY) / 2;
-      return { clientX: (centerX - panOffset.x) / scale + scaleOffset.x, clientY: (centerY - panOffset.y) / scale + scaleOffset.y };
-    }
-
-    return { clientX: 0, clientY: 0 }; // Default value
+    const touch = event.touches[0];
+    const clientX = touch.clientX - panOffset.x;
+    const clientY = touch.clientY - panOffset.y;
+    return { clientX, clientY };
   };
 
   const handleTouchStart = (event) => {
@@ -487,15 +448,6 @@ const App = () => {
     if (action === "writing") return;
 
     const { clientX, clientY } = getTouchCoordinates(event);
-
-    if (event.touches.length === 2) {
-      // Two-finger touch for panning and pinch-to-zoom
-      setAction("panningZooming");
-      setStartPanMousePosition({ x: clientX, y: clientY });
-      setStartPinchDistance(getPinchDistance(event));
-      return;
-    }
-
 
     if (tool === "selection") {
       const element = getElementAtPosition(clientX, clientY, elements);
@@ -514,30 +466,18 @@ const App = () => {
 
   const handleTouchMove = (event) => {
     event.preventDefault();
-
     const { clientX, clientY } = getTouchCoordinates(event);
 
-    if (action === "panningZooming") {
+    if (action === "panning") {
       const deltaX = clientX - startPanMousePosition.x;
       const deltaY = clientY - startPanMousePosition.y;
       setPanOffset({
         x: panOffset.x + deltaX,
         y: panOffset.y + deltaY,
       });
-
-      const currentPinchDistance = getPinchDistance(event);
-      const deltaPinch = currentPinchDistance - startPinchDistance;
-
-      if (Math.abs(deltaPinch) > 10) {
-        // Adjust the zoom scale
-        const zoomFactor = deltaPinch / 1000; // You may need to adjust this factor based on your needs
-        const newScale = Math.min(Math.max(scale + zoomFactor, 0.5), 20);
-        setScale(newScale);
-      }
-
-      setStartPinchDistance(currentPinchDistance);
       return;
     }
+
     if (tool === "selection") {
       const element = getElementAtPosition(clientX, clientY, elements);
       // ... (same logic as handleMouseMove for selection tool)
@@ -546,30 +486,18 @@ const App = () => {
     if (action === "drawing") {
       const index = elements.length - 1;
       const { x1, y1 } = elements[index];
-
-      // Adjust coordinates based on the scale factor
-      const scaledX = (clientX - panOffset.x) / scale + scaleOffset.x;
-      const scaledY = (clientY - panOffset.y) / scale + scaleOffset.y;
-
-      updateElement(index, x1, y1, scaledX, scaledY, tool);
-      // } else if (action === "moving") {
-      //   // ... (same logic as handleMouseMove for moving)
-      // } else if (action === "resizing") {
-      //   // ... (same logic as handleMouseMove for resizing)
-      // }
-    };
+      updateElement(index, x1, y1, clientX, clientY, tool);
+    } else if (action === "moving") {
+      // ... (same logic as handleMouseMove for moving)
+    } else if (action === "resizing") {
+      // ... (same logic as handleMouseMove for resizing)
+    }
   };
 
   const handleTouchEnd = (event) => {
     event.preventDefault();
     const { clientX, clientY } = getTouchCoordinates(event);
 
-    if (action === "writing") return;
-
-    if (event.touches.length === 0 && action === "panningZooming") {
-      setAction("none");
-      return;
-    }
     if (selectedElement) {
       if (
         selectedElement.type === "text" &&
@@ -593,23 +521,6 @@ const App = () => {
     setSelectedElement(null);
   };
 
-  useEffect(() => {
-    const handleTouchMove = (event) => {
-      if (event.touches.length >= 1) {
-        event.preventDefault();
-      }
-    };
-
-    document.addEventListener("touchmove", handleTouchMove, { passive: false });
-
-    return () => {
-      document.removeEventListener("touchmove", handleTouchMove);
-    };
-  }, []);
-
-  const onZoom = (delta) => {
-    setScale(prevState => Math.min(Math.max(prevState + delta, 0.1), 20));
-  }
   return (
     <div>
       <div style={{ position: "fixed", zIndex: 2 }}>
@@ -640,11 +551,6 @@ const App = () => {
         <label htmlFor="text">Text</label>
       </div>
       <div style={{ position: "fixed", zIndex: 2, bottom: 0, padding: 10 }}>
-        <button onClick={() => onZoom(-0.1)}>-</button>
-        <span onClick={() => setScale(1)}>
-          {new Intl.NumberFormat("en-GB", { style: "percent" }).format(scale)}
-        </span>
-        <button onClick={() => onZoom(0.1)}>+</button>
         <button onClick={undo}>Undo</button>
         <button onClick={redo}>Redo</button>
       </div>
@@ -654,9 +560,9 @@ const App = () => {
           onBlur={handleBlur}
           style={{
             position: "fixed",
-            top: (selectedElement.y1 - 2) * scale + panOffset.y * scale - scaleOffset.y,
-            left: selectedElement.x1 * scale + panOffset.x * scale - scaleOffset.x,
-            font: `${24 * scale} px sans-serif`,
+            top: selectedElement.y1 - 2 + panOffset.y,
+            left: selectedElement.x1 + panOffset.x,
+            font: "24px sans-serif",
             margin: 0,
             padding: 0,
             border: 0,
