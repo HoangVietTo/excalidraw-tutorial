@@ -538,6 +538,10 @@ const App = () => {
       setStartPinchDistance(currentPinchDistance);
       return;
     }
+    const scaledClientX = (clientX - panOffset.x) / scale;
+    const scaledClientY = (clientY - panOffset.y) / scale;
+
+
     if (tool === "selection") {
       const element = getElementAtPosition(clientX, clientY, elements);
       // ... (same logic as handleMouseMove for selection tool)
@@ -546,7 +550,9 @@ const App = () => {
     if (action === "drawing") {
       const index = elements.length - 1;
       const { x1, y1 } = elements[index];
-      updateElement(index, x1, y1, clientX, clientY, tool);
+      const width = scaledClientX - x1;
+      const height = scaledClientY - y1;
+      updateElement(index, x1, y1, x1 + width, y1 + height, tool);
       // } else if (action === "moving") {
       //   // ... (same logic as handleMouseMove for moving)
       // } else if (action === "resizing") {
@@ -603,7 +609,7 @@ const App = () => {
   }, []);
 
   const onZoom = (delta) => {
-    setScale(prevState => Math.min(Math.max(prevState + delta, 0.1), 20));
+    setScale(prevState => Math.min(Math.max(prevState + delta, 0.5), 20));
   }
   return (
     <div>
