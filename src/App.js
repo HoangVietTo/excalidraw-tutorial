@@ -468,15 +468,15 @@ const App = () => {
 
     if (touchCount === 1) {
       const touch = touches[0];
-      const clientX = touch.clientX - panOffset.x;
-      const clientY = touch.clientY - panOffset.y;
+      const clientX = (touch.clientX - panOffset.x) / scale + scaleOffset.x;
+      const clientY = (touch.clientY - panOffset.y) / scale + scaleOffset.y;
       return { clientX, clientY };
     } else if (touchCount === 2) {
       const touch1 = touches[0];
       const touch2 = touches[1];
       const centerX = (touch1.clientX + touch2.clientX) / 2;
       const centerY = (touch1.clientY + touch2.clientY) / 2;
-      return { clientX: centerX - panOffset.x, clientY: centerY - panOffset.y };
+      return { clientX: (centerX - panOffset.x) / scale + scaleOffset.x, clientY: (centerY - panOffset.y) / scale + scaleOffset.y };
     }
 
     return { clientX: 0, clientY: 0 }; // Default value
