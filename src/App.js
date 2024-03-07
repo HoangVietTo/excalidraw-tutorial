@@ -514,8 +514,8 @@ const App = () => {
 
   const handleTouchMove = (event) => {
     event.preventDefault();
-    const { clientX, clientY } = getTouchCoordinates(event);
 
+    const { clientX, clientY } = getTouchCoordinates(event);
 
     if (action === "panningZooming") {
       const deltaX = clientX - startPanMousePosition.x;
@@ -546,7 +546,12 @@ const App = () => {
     if (action === "drawing") {
       const index = elements.length - 1;
       const { x1, y1 } = elements[index];
-      updateElement(index, x1, y1, clientX, clientY, tool);
+
+      // Adjust coordinates based on the scale factor
+      const scaledX = (clientX - panOffset.x) / scale + scaleOffset.x;
+      const scaledY = (clientY - panOffset.y) / scale + scaleOffset.y;
+
+      updateElement(index, x1, y1, scaledX, scaledY, tool);
       // } else if (action === "moving") {
       //   // ... (same logic as handleMouseMove for moving)
       // } else if (action === "resizing") {
