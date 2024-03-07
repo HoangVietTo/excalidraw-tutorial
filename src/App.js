@@ -333,9 +333,9 @@ const App = () => {
   };
 
   const getMouseCoordinates = event => {
-    const clientX = (event.clientX - panOffset.x + scaleOffset.x) / scale;
-    const clientY = (event.clientY - panOffset.y + scaleOffset.y) / scale;
-    return { clientX, clientY };
+    const clientX = (event.clientX - panOffset.x * scale + scaleOffset.x) / scale;
+    const clientY = (event.clientY - panOffset.y * scale + scaleOffset.y) / scale;
+    return { clientX, clientY }
   };
 
   const handleMouseDown = event => {
@@ -468,15 +468,15 @@ const App = () => {
 
     if (touchCount === 1) {
       const touch = touches[0];
-      const clientX = (touch.clientX - panOffset.x + scaleOffset.x) / scale;
-      const clientY = (touch.clientY - panOffset.y + scaleOffset.y) / scale;
+      const clientX = touch.clientX - panOffset.x;
+      const clientY = touch.clientY - panOffset.y;
       return { clientX, clientY };
     } else if (touchCount === 2) {
       const touch1 = touches[0];
       const touch2 = touches[1];
       const centerX = (touch1.clientX + touch2.clientX) / 2;
       const centerY = (touch1.clientY + touch2.clientY) / 2;
-      return { clientX: (centerX - panOffset.x + scaleOffset.x) / scale, clientY: (centerY - panOffset.y + scaleOffset.y) / scale };
+      return { clientX: centerX - panOffset.x, clientY: centerY - panOffset.y };
     }
 
     return { clientX: 0, clientY: 0 }; // Default value
@@ -514,52 +514,44 @@ const App = () => {
 
   const handleTouchMove = (event) => {
     event.preventDefault();
-
-    if (event.touches.length >= 1) {
-      const { clientX, clientY } = getTouchCoordinates(event);
-
-      if (action === "panningZooming") {
-        const deltaX = clientX - startPanMousePosition.x;
-        const deltaY = clientY - startPanMousePosition.y;
-        setPanOffset({
-          x: panOffset.x + deltaX,
-          y: panOffset.y + deltaY,
-        });
-
-        const currentPinchDistance = getPinchDistance(event);
-        const deltaPinch = currentPinchDistance - startPinchDistance;
-
-        if (Math.abs(deltaPinch) > 10) {
-          // Adjust the zoom scale
-          const zoomFactor = deltaPinch / 1000; // You may need to adjust this factor based on your needs
-          const newScale = Math.min(Math.max(scale + zoomFactor, 0.5), 20);
-          setScale(newScale);
-        }
-
-        setStartPinchDistance(currentPinchDistance);
-        return;
-      }
-      const scaledClientX = (clientX - panOffset.x) / scale;
-      const scaledClientY = (clientY - panOffset.y) / scale;
+    const { clientX, clientY } = getTouchCoordinates(event);
 
 
-      if (tool === "selection") {
-        const element = getElementAtPosition(scaledClientX, scaledClientY, elements);
-        // ... (same logic as handleMouseMove for selection tool)
+    if (action === "panningZooming") {
+      const deltaX = clientX - startPanMousePosition.x;
+      const deltaY = clientY - startPanMousePosition.y;
+      setPanOffset({
+        x: panOffset.x + deltaX,
+        y: panOffset.y + deltaY,
+      });
+
+      const currentPinchDistance = getPinchDistance(event);
+      const deltaPinch = currentPinchDistance - startPinchDistance;
+
+      if (Math.abs(deltaPinch) > 10) {
+        // Adjust the zoom scale
+        const zoomFactor = deltaPinch / 1000; // You may need to adjust this factor based on your needs
+        const newScale = Math.min(Math.max(scale + zoomFactor, 0.5), 20);
+        setScale(newScale);
       }
 
-      if (action === "drawing") {
-        const index = elements.length - 1;
-        const { x1, y1 } = elements[index];
-        const width = scaledClientX - x1;
-        const height = scaledClientY - y1;
-        updateElement(index, x1, y1, x1 + width, y1 + height, tool);
-      } else if (action === "moving") {
-        // ... (same logic as handleMouseMove for moving)
-      } else if (action === "resizing") {
-        // ... (same logic as handleMouseMove for resizing)
-        // }
-      };
+      setStartPinchDistance(currentPinchDistance);
+      return;
+    }
+    if (tool === "selection") {
+      const element = getElementAtPosition(clientX, clientY, elements);
+      // ... (same logic as handleMouseMove for selection tool)
+    }
+
+    if (action === "drawing") {
+      const index = elements.length - 1;
+      const { x1, y1 } = elements[index];
+      updateElement(index, x1, y1, clientX, clientY, tool);
+      // } else if (action === "moving") {
+      //   // ... (same logic as handleMouseMove for moving)
+      // } else if (action === "resizing") {
+      //   // ... (same logic as handleMouseMove for resizing)
+      // }
     };
   };
 
@@ -611,7 +603,7 @@ const App = () => {
   }, []);
 
   const onZoom = (delta) => {
-    setScale(prevState => Math.min(Math.max(prevState + delta, 0.5), 20));
+    setScale(prevState => Math.min(Math.max(prevState + delta, 0.1), 20));
   }
   return (
     <div>
