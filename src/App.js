@@ -218,9 +218,22 @@ const App = () => {
   const [startPanMousePosition, setStartPanMousePosition] = React.useState({ x: 0, y: 0 });
   const [scale, setScale] = useState(1);
   const [scaleOffset, setScaleOffset] = useState({ x: 0, y: 0 });
+  const [startPinchDistance, setStartPinchDistance] = useState(0);
+
   const textAreaRef = useRef();
   const pressedKeys = usePressedKeys();
+  const getPinchDistance = (event) => {
+    const touch1 = event.touches[0];
+    const touch2 = event.touches[1];
 
+    if (touch1 && touch2) {
+      const dx = touch1.clientX - touch2.clientX;
+      const dy = touch1.clientY - touch2.clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    return 0;
+  };
   useLayoutEffect(() => {
     const canvas = document.getElementById("canvas");
     const context = canvas.getContext("2d");
@@ -319,41 +332,55 @@ const App = () => {
     setElements(elementsCopy, true);
   };
 
-  const getPointerCoordinates = (event) => {
+  const getMouseCoordinates = event => {
     const clientX = (event.clientX - panOffset.x * scale + scaleOffset.x) / scale;
     const clientY = (event.clientY - panOffset.y * scale + scaleOffset.y) / scale;
-    return { clientX, clientY };
+    return { clientX, clientY }
   };
 
-  const handlePointerDown = (event) => {
-    const { clientX, clientY } = getPointerCoordinates(event);
-
+  const handleMouseDown = event => {
     if (action === "writing") return;
 
-    if (event.pointerType === "touch" && event.pointerType === "pen") {
-      // Two-finger touch for panning
-      if (event.nativeEvent.touches && event.nativeEvent.touches.length === 2) {
-        setAction("panning");
-        setStartPanMousePosition({ x: clientX, y: clientY });
-        return;
-      }
+    const { clientX, clientY } = getMouseCoordinates(event);
+
+    if (event.button === 1 || pressedKeys.has(" ")) {
+      setAction("panning");
+      setStartPanMousePosition({ x: clientX, y: clientY });
+      return;
     }
 
     if (tool === "selection") {
       const element = getElementAtPosition(clientX, clientY, elements);
-      // ... (same logic as handleMouseDown for selection tool)
+      if (element) {
+        if (element.type === "pencil") {
+          const xOffsets = element.points.map(point => clientX - point.x);
+          const yOffsets = element.points.map(point => clientY - point.y);
+          setSelectedElement({ ...element, xOffsets, yOffsets });
+        } else {
+          const offsetX = clientX - element.x1;
+          const offsetY = clientY - element.y1;
+          setSelectedElement({ ...element, offsetX, offsetY });
+        }
+        setElements(prevState => prevState);
+
+        if (element.position === "inside") {
+          setAction("moving");
+        } else {
+          setAction("resizing");
+        }
+      }
     } else {
       const id = elements.length;
       const element = createElement(id, clientX, clientY, clientX, clientY, tool);
-      setElements((prevState) => [...prevState, element]);
+      setElements(prevState => [...prevState, element]);
       setSelectedElement(element);
 
       setAction(tool === "text" ? "writing" : "drawing");
     }
   };
 
-  const handlePointerMove = (event) => {
-    const { clientX, clientY } = getPointerCoordinates(event);
+  const handleMouseMove = event => {
+    const { clientX, clientY } = getMouseCoordinates(event);
 
     if (action === "panning") {
       const deltaX = clientX - startPanMousePosition.x;
@@ -402,16 +429,8 @@ const App = () => {
     }
   };
 
-  const handlePointerUp = (event) => {
-    const { clientX, clientY } = getPointerCoordinates(event);
-
-    if (action === "writing") return;
-
-    if (event.pointerType === "touch" && action === "panning") {
-      setAction("none");
-      return;
-    }
-
+  const handleMouseUp = event => {
+    const { clientX, clientY } = getMouseCoordinates(event);
     if (selectedElement) {
       if (
         selectedElement.type === "text" &&
@@ -425,7 +444,8 @@ const App = () => {
       const index = selectedElement.id;
       const { id, type } = elements[index];
       if ((action === "drawing" || action === "resizing") && adjustmentRequired(type)) {
-        // ... (same logic as handleMouseUp for drawing and resizing)
+        const { x1, y1, x2, y2 } = adjustElementCoordinates(elements[index]);
+        updateElement(id, x1, y1, x2, y2, type);
       }
     }
 
@@ -467,12 +487,15 @@ const App = () => {
     if (action === "writing") return;
 
     const { clientX, clientY } = getTouchCoordinates(event);
+
     if (event.touches.length === 2) {
-      // Two-finger touch for panning
-      setAction("panning");
+      // Two-finger touch for panning and pinch-to-zoom
+      setAction("panningZooming");
       setStartPanMousePosition({ x: clientX, y: clientY });
+      setStartPinchDistance(getPinchDistance(event));
       return;
     }
+
 
     if (tool === "selection") {
       const element = getElementAtPosition(clientX, clientY, elements);
@@ -493,15 +516,31 @@ const App = () => {
     event.preventDefault();
     const { clientX, clientY } = getTouchCoordinates(event);
 
-    if (action === "panning") {
+
+    if (action === "panningZooming") {
       const deltaX = clientX - startPanMousePosition.x;
       const deltaY = clientY - startPanMousePosition.y;
       setPanOffset({
         x: panOffset.x + deltaX,
         y: panOffset.y + deltaY,
       });
+
+      const currentPinchDistance = getPinchDistance(event);
+      const deltaPinch = currentPinchDistance - startPinchDistance;
+
+      if (Math.abs(deltaPinch) > 10) {
+        // Adjust the zoom scale
+        const zoomFactor = deltaPinch / 1000; // You may need to adjust this factor based on your needs
+        const newScale = Math.min(Math.max(scale + zoomFactor, 0.5), 20);
+        setScale(newScale);
+      }
+
+      setStartPinchDistance(currentPinchDistance);
       return;
     }
+    const scaledClientX = (clientX - panOffset.x) / scale;
+    const scaledClientY = (clientY - panOffset.y) / scale;
+
 
     if (tool === "selection") {
       const element = getElementAtPosition(clientX, clientY, elements);
@@ -511,12 +550,15 @@ const App = () => {
     if (action === "drawing") {
       const index = elements.length - 1;
       const { x1, y1 } = elements[index];
-      updateElement(index, x1, y1, clientX, clientY, tool);
-    } else if (action === "moving") {
-      // ... (same logic as handleMouseMove for moving)
-    } else if (action === "resizing") {
-      // ... (same logic as handleMouseMove for resizing)
-    }
+      const width = scaledClientX - x1;
+      const height = scaledClientY - y1;
+      updateElement(index, x1, y1, x1 + width, y1 + height, tool);
+      // } else if (action === "moving") {
+      //   // ... (same logic as handleMouseMove for moving)
+      // } else if (action === "resizing") {
+      //   // ... (same logic as handleMouseMove for resizing)
+      // }
+    };
   };
 
   const handleTouchEnd = (event) => {
@@ -525,11 +567,10 @@ const App = () => {
 
     if (action === "writing") return;
 
-    if (event.touches.length === 0 && action === "panning") {
+    if (event.touches.length === 0 && action === "panningZooming") {
       setAction("none");
       return;
     }
-
     if (selectedElement) {
       if (
         selectedElement.type === "text" &&
@@ -554,21 +595,21 @@ const App = () => {
   };
 
   useEffect(() => {
-    const handlePointerMove = (event) => {
-      if (event.pointerType === "touch" && event.nativeEvent.touches.length > 1) {
+    const handleTouchMove = (event) => {
+      if (event.touches.length >= 1) {
         event.preventDefault();
       }
     };
 
-    document.addEventListener("pointermove", handlePointerMove, { passive: false });
+    document.addEventListener("touchmove", handleTouchMove, { passive: false });
 
     return () => {
-      document.removeEventListener("pointermove", handlePointerMove);
+      document.removeEventListener("touchmove", handleTouchMove);
     };
   }, []);
 
   const onZoom = (delta) => {
-    setScale(prevState => Math.min(Math.max(prevState + delta, 0.1), 20));
+    setScale(prevState => Math.min(Math.max(prevState + delta, 0.5), 20));
   }
   return (
     <div>
@@ -633,9 +674,9 @@ const App = () => {
         id="canvas"
         width={window.innerWidth}
         height={window.innerHeight}
-        onMouseDown={handlePointerDown}
-        onMouseMove={handlePointerMove}
-        onMouseUp={handlePointerUp}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
