@@ -1,7 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import rough from "roughjs/bundled/rough.esm";
 import getStroke from "perfect-freehand";
-import { adjustedCoordinates } from './utils';
+// import { adjustedCoordinates } from './utils';
 
 const generator = rough.generator();
 
@@ -72,55 +72,55 @@ const getElementAtPosition = (x, y, elements) => {
     .find(element => element.position !== null);
 };
 
-const adjustElementCoordinates = element => {
-  const { type, x1, y1, x2, y2 } = element;
-  if (type === "rectangle") {
-    const minX = Math.min(x1, x2);
-    const maxX = Math.max(x1, x2);
-    const minY = Math.min(y1, y2);
-    const maxY = Math.max(y1, y2);
-    return { x1: minX, y1: minY, x2: maxX, y2: maxY };
-  } else {
-    if (x1 < x2 || (x1 === x2 && y1 < y2)) {
-      return { x1, y1, x2, y2 };
-    } else {
-      return { x1: x2, y1: y2, x2: x1, y2: y1 };
-    }
-  }
-};
+// const adjustElementCoordinates = element => {
+//   const { type, x1, y1, x2, y2 } = element;
+//   if (type === "rectangle") {
+//     const minX = Math.min(x1, x2);
+//     const maxX = Math.max(x1, x2);
+//     const minY = Math.min(y1, y2);
+//     const maxY = Math.max(y1, y2);
+//     return { x1: minX, y1: minY, x2: maxX, y2: maxY };
+//   } else {
+//     if (x1 < x2 || (x1 === x2 && y1 < y2)) {
+//       return { x1, y1, x2, y2 };
+//     } else {
+//       return { x1: x2, y1: y2, x2: x1, y2: y1 };
+//     }
+//   }
+// };
 
-const cursorForPosition = position => {
-  switch (position) {
-    case "tl":
-    case "br":
-    case "start":
-    case "end":
-      return "nwse-resize";
-    case "tr":
-    case "bl":
-      return "nesw-resize";
-    default:
-      return "move";
-  }
-};
+// const cursorForPosition = position => {
+//   switch (position) {
+//     case "tl":
+//     case "br":
+//     case "start":
+//     case "end":
+//       return "nwse-resize";
+//     case "tr":
+//     case "bl":
+//       return "nesw-resize";
+//     default:
+//       return "move";
+//   }
+// };
 
-const resizedCoordinates = (clientX, clientY, position, coordinates) => {
-  const { x1, y1, x2, y2 } = coordinates;
-  switch (position) {
-    case "tl":
-    case "start":
-      return { x1: clientX, y1: clientY, x2, y2 };
-    case "tr":
-      return { x1, y1: clientY, x2: clientX, y2 };
-    case "bl":
-      return { x1: clientX, y1, x2, y2: clientY };
-    case "br":
-    case "end":
-      return { x1, y1, x2: clientX, y2: clientY };
-    default:
-      return null; //should not really get here...
-  }
-};
+// const resizedCoordinates = (clientX, clientY, position, coordinates) => {
+//   const { x1, y1, x2, y2 } = coordinates;
+//   switch (position) {
+//     case "tl":
+//     case "start":
+//       return { x1: clientX, y1: clientY, x2, y2 };
+//     case "tr":
+//       return { x1, y1: clientY, x2: clientX, y2 };
+//     case "bl":
+//       return { x1: clientX, y1, x2, y2: clientY };
+//     case "br":
+//     case "end":
+//       return { x1, y1, x2: clientX, y2: clientY };
+//     default:
+//       return null; //should not really get here...
+//   }
+// };
 
 const useHistory = initialState => {
   const [index, setIndex] = useState(0);
